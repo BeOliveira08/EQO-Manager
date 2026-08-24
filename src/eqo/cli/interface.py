@@ -25,6 +25,10 @@ from eqo.services.planner import Planner
 from eqo.services.profile_service import ProfileService
 from eqo.services.state_service import StateService
 from eqo.services.task_service import TaskService
+from eqo.services.voice_interaction import VoiceInteractionService
+from eqo.speech.adapters import WhisperSTTProvider, WindowsSAPIProvider
+from eqo.speech.interfaces import AudioInput
+from eqo.speech.settings import SpeechSettings, STTMode, TTSMode
 from eqo.storage.sqlite_event_repository import SQLiteEventRepository
 from eqo.storage.sqlite_memory_repository import SQLiteMemoryRepository
 from eqo.storage.sqlite_profile_repository import SQLiteUserProfileRepository
@@ -32,6 +36,20 @@ from eqo.storage.sqlite_repository import SQLiteTaskRepository
 from eqo.storage.sqlite_state_repository import SQLiteUserStateRepository
 
 init(autoreset=True)
+
+
+def _show_voice_status(state: ConversationState) -> None:
+    labels = {
+        ConversationState.LISTENING: "[OUVINDO]",
+        ConversationState.PROCESSING: "[PROCESSANDO]",
+        ConversationState.WAITING_CONFIRMATION: "[AGUARDANDO CONFIRMAÇÃO]",
+        ConversationState.RESPONDING: "[FALANDO]",
+        ConversationState.ERROR: "[ERRO]",
+        ConversationState.IDLE: "[OCIOSO]",
+        ConversationState.READY: "[OCIOSO]",
+    }
+    if state in labels:
+        print(Fore.BLUE + labels[state])
 
 
 def _render_tasks(tasks: list[Task], today: date | None = None) -> None:
@@ -67,6 +85,7 @@ class CLI:
         memories: MemoryService | None = None,
         ai_interpreter: NaturalLanguageInterpreter | None = None,
         interpretation_executor: InterpretationExecutor | None = None,
+        voice_service: VoiceInteractionService | None = None,
     ) -> None:
         self.service = service
         self.state_service = state_service
@@ -78,6 +97,7 @@ class CLI:
         self.memories = memories
         self.ai_interpreter = ai_interpreter
         self.interpretation_executor = interpretation_executor
+        self.voice_service = voice_service
         self.confirmation_gate = ConfirmationGate()
 
     def run(self) -> None:
@@ -97,6 +117,8 @@ class CLI:
                 and self.ai_interpreter.mode is AIMode.LOCAL
             ):
                 print("17. Interpretar linguagem natural")
+            if self.voice_service is not None:
+                print("18. Push-to-talk (arquivo WAV)")
             choice = input(Fore.CYAN + "Escolha: ").strip()
             actions = {
                 "1": self.add_task, "2": lambda: self.list_tasks(),
@@ -112,6 +134,7 @@ class CLI:
                 "15": self.show_memories,
                 "16": self.forget_information,
                 "17": self.interpret_natural_language,
+                "18": self.push_to_talk,
             }
             if choice == "9":
                 print(Fore.MAGENTA + "Até logo!")
@@ -317,6 +340,31 @@ class CLI:
             return
         print(Fore.CYAN + self.interpretation_executor.execute(outcome).text)
 
+    def push_to_talk(self) -> None:
+        if self.voice_service is None:
+            print(Fore.YELLOW + "Voz indisponível; use a interface textual.")
+            return
+        path = Path(input("Arquivo WAV gravado após pressionar e soltar: ").strip())
+        try:
+            audio = AudioInput(path.read_bytes())
+        except (OSError, ValueError) as error:
+            print(Fore.RED + f"Não foi possível ler o áudio: {error}")
+            return
+        result = self.voice_service.process(audio)
+        if result.transcript:
+            print(Fore.CYAN + f"Você disse: {result.transcript}")
+        print(Fore.CYAN + result.response.text)
+        if result.state is ConversationState.WAITING_CONFIRMATION:
+            result = self.voice_service.confirm_text(input("Confirmação (sim/não/cancela): "))
+            print(Fore.CYAN + result.response.text)
+        metrics = result.metrics
+        print(
+            Fore.BLUE
+            + f"Latência: STT={metrics.stt_ms:.0f}ms, interpretação="
+            f"{metrics.interpretation_ms:.0f}ms, Core={metrics.core_ms:.0f}ms, "
+            f"TTS={metrics.tts_ms:.0f}ms, total={metrics.total_ms:.0f}ms"
+        )
+
     @staticmethod
     def _render_plan(plan: Plan) -> None:
         print(Fore.BLUE + "\nPlano sugerido (nenhuma tarefa foi alterada):")
@@ -370,6 +418,26 @@ def build_cli(root: str | Path = ".") -> CLI:
         planner=planner,
         context_engine=context_engine,
     )
+    speech_settings = SpeechSettings.from_environment()
+    stt = (
+        WhisperSTTProvider(speech_settings.whisper_model)
+        if speech_settings.stt_mode is STTMode.WHISPER
+        else None
+    )
+    tts = WindowsSAPIProvider() if speech_settings.tts_mode is TTSMode.WINDOWS else None
+    voice_service = (
+        VoiceInteractionService(
+            stt=stt,
+            interpreter=interpreter,
+            executor=executor,
+            dialogue=DialogueManager(profiles),
+            states=states,
+            tts=tts,
+            status_listener=_show_voice_status,
+        )
+        if stt is not None
+        else None
+    )
     imported = repository.import_legacy_json(base / "tasks.json")
     if imported:
         print(Fore.GREEN + f"OK: {imported} tarefa(s) importada(s) do formato legado.")
@@ -384,6 +452,7 @@ def build_cli(root: str | Path = ".") -> CLI:
         memories,
         interpreter,
         executor,
+        voice_service,
     )
 
 

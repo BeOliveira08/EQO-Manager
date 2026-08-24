@@ -1,6 +1,6 @@
 from eqo.interaction.command_parser import CommandParser
 from eqo.interaction.intent import Intent, ParsedCommand
-from eqo.interaction.response import InteractionResponse, ProactiveMessage
+from eqo.interaction.response import InteractionResponse, ProactiveMessage, ResponsePriority
 
 __all__ = [
     "CommandParser",
@@ -8,5 +8,5 @@ __all__ = [
     "InteractionResponse",
     "ParsedCommand",
     "ProactiveMessage",
+    "ResponsePriority",
 ]
-

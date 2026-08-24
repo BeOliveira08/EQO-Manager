@@ -11,6 +11,11 @@ class ConversationState(StrEnum):
     ASK_ASSISTANT_NAME = "ask_assistant_name"
     CONFIRM = "confirm"
     READY = "ready"
+    LISTENING = "listening"
+    PROCESSING = "processing"
+    WAITING_CONFIRMATION = "waiting_confirmation"
+    RESPONDING = "responding"
+    ERROR = "error"
 
 
 class DialogueManager:
@@ -75,3 +80,40 @@ class DialogueManager:
         return InteractionResponse(
             f"Perfeito, {profile.name}. A partir de agora sou {profile.assistant_name}."
         )
+
+    def begin_listening(self) -> None:
+        self._transition(
+            ConversationState.LISTENING,
+            {ConversationState.IDLE, ConversationState.READY, ConversationState.ERROR},
+        )
+
+    def begin_processing(self) -> None:
+        self._transition(ConversationState.PROCESSING, {ConversationState.LISTENING})
+
+    def wait_for_confirmation(self) -> None:
+        self._transition(
+            ConversationState.WAITING_CONFIRMATION,
+            {ConversationState.PROCESSING},
+        )
+
+    def begin_responding(self) -> None:
+        self._transition(
+            ConversationState.RESPONDING,
+            {ConversationState.PROCESSING, ConversationState.WAITING_CONFIRMATION},
+        )
+
+    def fail(self) -> None:
+        self.state = ConversationState.ERROR
+
+    def finish_interaction(self) -> None:
+        self._transition(
+            ConversationState.READY if self.profiles.current() else ConversationState.IDLE,
+            {ConversationState.RESPONDING},
+        )
+
+    def _transition(
+        self, target: ConversationState, allowed: set[ConversationState]
+    ) -> None:
+        if self.state not in allowed:
+            raise RuntimeError(f"Transição inválida: {self.state.value} -> {target.value}")
+        self.state = target

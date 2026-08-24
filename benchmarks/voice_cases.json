@@ -1,0 +1,38 @@
+[
+  {
+    "id": "list_today_ptbr",
+    "spoken_text": "EQO, o que eu tenho para fazer hoje?",
+    "expected_intent": "get_plan",
+    "language": "pt-BR",
+    "audio_format": "wav_pcm",
+    "model": null,
+    "model_size_mb": null,
+    "ram_peak_mb": null,
+    "stt_latency_ms": null,
+    "cpu_time_ms": null
+  },
+  {
+    "id": "low_capacity_ptbr",
+    "spoken_text": "Não estou conseguindo estudar agora",
+    "expected_intent": "update_state",
+    "language": "pt-BR",
+    "audio_format": "wav_pcm",
+    "model": null,
+    "model_size_mb": null,
+    "ram_peak_mb": null,
+    "stt_latency_ms": null,
+    "cpu_time_ms": null
+  },
+  {
+    "id": "confirm_yes_ptbr",
+    "spoken_text": "Sim",
+    "expected_dialogue_action": "confirm_pending",
+    "language": "pt-BR",
+    "audio_format": "wav_pcm",
+    "model": null,
+    "model_size_mb": null,
+    "ram_peak_mb": null,
+    "stt_latency_ms": null,
+    "cpu_time_ms": null
+  }
+]

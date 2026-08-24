@@ -1,10 +1,24 @@
+from dataclasses import dataclass
 from typing import Protocol
 
 
-class SpeechRecognizer(Protocol):
-    def transcribe(self, audio: bytes) -> str: ...
+@dataclass(frozen=True, slots=True)
+class AudioInput:
+    data: bytes
+    media_type: str = "audio/wav"
+
+    def __post_init__(self) -> None:
+        if not self.data:
+            raise ValueError("O áudio não pode estar vazio.")
 
 
-class SpeechSynthesizer(Protocol):
-    def synthesize(self, text: str) -> bytes: ...
+class STTProvider(Protocol):
+    def transcribe(self, audio: AudioInput) -> str: ...
 
+
+class TTSProvider(Protocol):
+    def speak(self, text: str) -> None: ...
+
+
+SpeechRecognizer = STTProvider
+SpeechSynthesizer = TTSProvider

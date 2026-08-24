@@ -1,10 +1,10 @@
 # EQO Core
 
 EQO é um mordomo digital local e adaptativo para administrar tarefas e contexto com
-menos carga cognitiva. A versão `0.6.0` evolui o TurboTaskManager existente sem
+menos carga cognitiva. A versão `0.7.0` evolui o TurboTaskManager existente sem
 depender de Internet ou IA generativa.
 
-## Estado da v0.6 — Local Intelligence Adapter
+## Estado da v0.7 — Voice & Accessibility Layer
 
 - domínio de tarefas separado da interface;
 - persistência local SQLite e importação não destrutiva do `tasks.json` legado;
@@ -41,6 +41,15 @@ depender de Internet ou IA generativa.
 - executor que só aceita interpretações confirmadas pelo pipeline;
 - primeira suíte de frases em `benchmarks/intent_cases.json`;
 - opção 17 da CLI para linguagem natural quando o modo local estiver habilitado.
+- protocolos substituíveis de STT e TTS;
+- `VoiceInteractionService` sem regras de negócio;
+- estados explícitos de escuta, processamento, confirmação, resposta e erro;
+- confirmação falada determinística sem nova chamada à IA;
+- respostas com prioridade, atenção e metadata de acessibilidade;
+- falhas isoladas: STT/TTS/IA não derrubam texto nem Core;
+- métricas locais de STT, interpretação, Core, TTS e latência total;
+- benchmark de voz em `benchmarks/voice_cases.json`;
+- opção 18 para processar um WAV iniciado explicitamente pelo usuário.
 
 ## Inteligência local opcional
 
@@ -54,6 +63,21 @@ eqo
 
 Também podem ser definidos `EQO_OLLAMA_HOST` e `EQO_AI_TIMEOUT`. Se o Ollama estiver
 indisponível, o EQO retorna `UNKNOWN` e mantém o Core funcional.
+
+## Voz opcional
+
+Voz permanece desligada por padrão. Para experimentar Whisper local e SAPI no Windows:
+
+```powershell
+$env:EQO_STT_MODE = "whisper"
+$env:EQO_WHISPER_MODEL = "tiny"
+$env:EQO_TTS_MODE = "windows"
+eqo
+```
+
+O pacote Whisper não é instalado pelo EQO e deve ser fornecido separadamente no ambiente
+de desenvolvimento. A opção 18 aceita um WAV capturado após uma ação explícita do usuário;
+não há escuta contínua. Sem STT ou TTS, todas as interfaces textuais permanecem funcionais.
 
 ## Executar e verificar
 
