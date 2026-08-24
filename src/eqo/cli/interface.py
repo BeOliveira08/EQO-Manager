@@ -5,17 +5,21 @@ from pathlib import Path
 
 from colorama import Fore, init  # type: ignore[import-untyped]
 
+from eqo.domain.memory import MemoryImportance, MemorySource
 from eqo.domain.persona import Persona
 from eqo.domain.plan import Plan
 from eqo.domain.state import Capacity
 from eqo.domain.task import Priority, Task, TaskStatus
 from eqo.services.context_engine import ContextEngine
 from eqo.services.dialogue_manager import ConversationState, DialogueManager
+from eqo.services.memory_service import MemoryService
 from eqo.services.personality_engine import PersonalityEngine
 from eqo.services.planner import Planner
 from eqo.services.profile_service import ProfileService
 from eqo.services.state_service import StateService
 from eqo.services.task_service import TaskService
+from eqo.storage.sqlite_event_repository import SQLiteEventRepository
+from eqo.storage.sqlite_memory_repository import SQLiteMemoryRepository
 from eqo.storage.sqlite_profile_repository import SQLiteUserProfileRepository
 from eqo.storage.sqlite_repository import SQLiteTaskRepository
 from eqo.storage.sqlite_state_repository import SQLiteUserStateRepository
@@ -53,6 +57,7 @@ class CLI:
         profiles: ProfileService | None = None,
         dialogue: DialogueManager | None = None,
         personality: PersonalityEngine | None = None,
+        memories: MemoryService | None = None,
     ) -> None:
         self.service = service
         self.state_service = state_service
@@ -61,6 +66,7 @@ class CLI:
         self.profiles = profiles
         self.dialogue = dialogue
         self.personality = personality
+        self.memories = memories
 
     def run(self) -> None:
         while True:
@@ -72,6 +78,8 @@ class CLI:
                 print("10. Atualizar meu estado\n11. Sugerir plano")
             if self.dialogue is not None:
                 print("12. Onboarding\n13. Alterar nome do assistente")
+            if self.memories is not None:
+                print("14. Lembrar informação\n15. O que você lembra?\n16. Esquecer informação")
             choice = input(Fore.CYAN + "Escolha: ").strip()
             actions = {
                 "1": self.add_task, "2": lambda: self.list_tasks(),
@@ -83,6 +91,9 @@ class CLI:
                 "11": self.show_plan,
                 "12": self.run_onboarding,
                 "13": self.change_assistant_name,
+                "14": self.remember_information,
+                "15": self.show_memories,
+                "16": self.forget_information,
             }
             if choice == "9":
                 print(Fore.MAGENTA + "Até logo!")
@@ -226,6 +237,47 @@ class CLI:
     def _persona(self) -> Persona:
         return Persona(name=self._assistant_name())
 
+    def remember_information(self) -> None:
+        if self.memories is None:
+            print(Fore.YELLOW + "Memória indisponível.")
+            return
+        key = input("Identificador da memória (ex.: preferred_study_time): ").strip()
+        value = input("O que devo lembrar: ").strip()
+        try:
+            memory = self.memories.remember(
+                key,
+                value,
+                importance=MemoryImportance.HIGH,
+                source=MemorySource.USER_PREFERENCE,
+            )
+        except ValueError as error:
+            print(Fore.RED + f"Memória inválida: {error}")
+            return
+        print(Fore.GREEN + f"Entendido. Vou lembrar: {memory.value}")
+
+    def show_memories(self) -> None:
+        if self.memories is None:
+            print(Fore.YELLOW + "Memória indisponível.")
+            return
+        memories = self.memories.list()
+        profile = self.profiles.current() if self.profiles else None
+        if self.personality is not None:
+            response = self.personality.describe_memories(memories, profile)
+            print(Fore.CYAN + response.text)
+            return
+        for memory in memories:
+            print(f"- {memory.key}: {memory.value}")
+
+    def forget_information(self) -> None:
+        if self.memories is None:
+            print(Fore.YELLOW + "Memória indisponível.")
+            return
+        key = input("Identificador da memória a esquecer: ").strip()
+        if self.memories.forget(key):
+            print(Fore.GREEN + "Claro. Essa memória foi apagada.")
+        else:
+            print(Fore.YELLOW + "Não encontrei essa memória.")
+
     @staticmethod
     def _render_plan(plan: Plan) -> None:
         print(Fore.BLUE + "\nPlano sugerido (nenhuma tarefa foi alterada):")
@@ -248,6 +300,8 @@ def build_cli(root: str | Path = ".") -> CLI:
     repository = SQLiteTaskRepository(base / "data" / "eqo.db")
     state_repository = SQLiteUserStateRepository(base / "data" / "eqo.db")
     profile_repository = SQLiteUserProfileRepository(base / "data" / "eqo.db")
+    memory_repository = SQLiteMemoryRepository(base / "data" / "eqo.db")
+    event_repository = SQLiteEventRepository(base / "data" / "eqo.db")
     profiles = ProfileService(profile_repository)
     imported = repository.import_legacy_json(base / "tasks.json")
     if imported:
@@ -260,6 +314,7 @@ def build_cli(root: str | Path = ".") -> CLI:
         profiles,
         DialogueManager(profiles),
         PersonalityEngine(),
+        MemoryService(memory_repository, event_repository),
     )
 
 

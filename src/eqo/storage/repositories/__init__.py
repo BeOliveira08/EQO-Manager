@@ -1,5 +1,7 @@
 from eqo.storage.repositories.interfaces import (
     BackupRepository,
+    EventRepository,
+    MemoryRepository,
     TaskRepository,
     UserProfileRepository,
     UserStateRepository,
@@ -7,6 +9,8 @@ from eqo.storage.repositories.interfaces import (
 
 __all__ = [
     "BackupRepository",
+    "EventRepository",
+    "MemoryRepository",
     "TaskRepository",
     "UserProfileRepository",
     "UserStateRepository",

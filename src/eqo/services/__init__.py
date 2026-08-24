@@ -1,6 +1,8 @@
 from eqo.services.context_engine import ContextEngine
 from eqo.services.decision_engine import Decision, DecisionEngine, DecisionResult
 from eqo.services.dialogue_manager import ConversationState, DialogueManager
+from eqo.services.memory_consolidator import MemoryConsolidator
+from eqo.services.memory_service import MemoryService, WorkingMemory
 from eqo.services.personality_engine import PersonalityEngine
 from eqo.services.planner import Planner
 from eqo.services.profile_service import ProfileService
@@ -14,9 +16,12 @@ __all__ = [
     "ContextEngine",
     "ConversationState",
     "DialogueManager",
+    "MemoryConsolidator",
+    "MemoryService",
     "PersonalityEngine",
     "Planner",
     "ProfileService",
     "StateService",
     "TaskService",
+    "WorkingMemory",
 ]

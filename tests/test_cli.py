@@ -5,11 +5,14 @@ from eqo.cli.interface import CLI, _render_tasks
 from eqo.domain.task import Priority, Task, TaskStatus
 from eqo.services.context_engine import ContextEngine
 from eqo.services.dialogue_manager import DialogueManager
+from eqo.services.memory_service import MemoryService
 from eqo.services.personality_engine import PersonalityEngine
 from eqo.services.planner import Planner
 from eqo.services.profile_service import ProfileService
 from eqo.services.state_service import StateService
 from eqo.services.task_service import TaskService
+from eqo.storage.sqlite_event_repository import SQLiteEventRepository
+from eqo.storage.sqlite_memory_repository import SQLiteMemoryRepository
 from eqo.storage.sqlite_profile_repository import SQLiteUserProfileRepository
 from eqo.storage.sqlite_repository import SQLiteTaskRepository
 from eqo.storage.sqlite_state_repository import SQLiteUserStateRepository
@@ -116,3 +119,34 @@ def test_cli_onboarding_and_name_change_are_persisted(
     assert "mordomo virtual" in output
     assert "A partir de agora sou Jarvis" in output
     assert "--- Jarvis ---" in output
+
+
+def test_cli_remembers_lists_and_really_forgets_information(
+    tmp_path: Path, monkeypatch: object, capsys: object
+) -> None:
+    database = tmp_path / "eqo.db"
+    memories = MemoryService(
+        SQLiteMemoryRepository(database), SQLiteEventRepository(database)
+    )
+    cli = CLI(
+        TaskService(SQLiteTaskRepository(database)),
+        personality=PersonalityEngine(),
+        memories=memories,
+    )
+    answers = iter([
+        "14", "preferred_study_time", "prefiro estudar à noite",
+        "15",
+        "16", "preferred_study_time",
+        "15",
+        "9",
+    ])
+    monkeypatch.setattr("builtins.input", lambda _prompt="": next(answers))  # type: ignore[attr-defined]
+
+    cli.run()
+
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert "Vou lembrar" in output
+    assert "preferred_study_time: prefiro estudar à noite" in output
+    assert "Essa memória foi apagada" in output
+    assert "Ainda não tenho memórias persistentes" in output
+    assert memories.list() == []

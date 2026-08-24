@@ -1,4 +1,5 @@
 from eqo.domain.decision import Decision, DecisionResult
+from eqo.domain.memory import Memory
 from eqo.domain.persona import AutonomyLevel, Persona
 from eqo.domain.plan import Plan, PlanItemKind
 from eqo.domain.user import UserProfile
@@ -76,6 +77,20 @@ class PersonalityEngine:
             trigger="available_time",
             requires_confirmation=True,
         )
+
+    def describe_memories(
+        self, memories: list[Memory], profile: UserProfile | None = None
+    ) -> InteractionResponse:
+        facts = []
+        if profile is not None:
+            facts.extend([
+                f"seu nome é {profile.name}",
+                f"você escolheu {profile.assistant_name} como meu nome",
+            ])
+        facts.extend(f"{memory.key}: {memory.value}" for memory in memories)
+        if not facts:
+            return InteractionResponse("Ainda não tenho memórias persistentes sobre você.")
+        return InteractionResponse("Eu lembro que " + "; ".join(facts) + ".")
 
     @staticmethod
     def _requires_confirmation(decision: Decision, persona: Persona) -> bool:

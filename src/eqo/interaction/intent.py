@@ -10,6 +10,10 @@ class Intent(StrEnum):
     UPDATE_STATE = "update_state"
     GET_PLAN = "get_plan"
     SET_PREFERENCE = "set_preference"
+    REMEMBER = "remember"
+    RECALL = "recall"
+    FORGET_MEMORY = "forget_memory"
+    LIST_MEMORIES = "list_memories"
     CHANGE_NAME = "change_name"
     HELP = "help"
     EXIT = "exit"
@@ -21,4 +25,3 @@ class ParsedCommand:
     intent: Intent
     arguments: dict[str, str] = field(default_factory=dict)
     raw_text: str = ""
-
