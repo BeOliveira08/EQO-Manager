@@ -1,10 +1,23 @@
 # EQO Core
 
 EQO é um mordomo digital local e adaptativo para administrar tarefas e contexto com
-menos carga cognitiva. A versão `0.7.0` evolui o TurboTaskManager existente sem
+menos carga cognitiva. A versão `0.8.0` evolui o TurboTaskManager existente sem
 depender de Internet ou IA generativa.
 
-## Estado da v0.7 — Voice & Accessibility Layer
+## Estado da v0.8 — Mobile Runtime Boundary
+
+- fachada `MobileEQOBackend` orientada a estado e próxima ação, sem tipos de SQLite ou CLI;
+- implementação Python de referência para provar a portabilidade dos casos de uso;
+- contrato JSON versionado para manter adapters de runtimes diferentes compatíveis;
+- exportação lógica `.eqobackup` versionada pelas entidades, sem copiar o banco;
+- `Scheduler` abstrato e `LocalScheduler` determinístico, sem autonomia sobre tarefas;
+- shell Android Kotlin API 23+ sem Python embarcado e sem permissão de Internet;
+- microfone solicitado apenas após a ação explícita **Falar**, com fallback textual;
+- protocolo de benchmark mobile para startup, RAM, banco, planner, busca, IA e voz;
+- shell claramente marcado como demonstrativo até receber um backend persistente;
+- ADRs de fronteira mobile, backup, scheduler e segurança/permissões.
+
+## Base preservada da v0.7 — Voice & Accessibility Layer
 
 - domínio de tarefas separado da interface;
 - persistência local SQLite e importação não destrutiva do `tasks.json` legado;

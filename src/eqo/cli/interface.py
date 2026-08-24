@@ -11,6 +11,7 @@ from eqo.ai.interpreter import NaturalLanguageInterpreter
 from eqo.ai.models import AIMode, InterpretationDisposition
 from eqo.ai.ollama_provider import OllamaAIProvider
 from eqo.ai.settings import AISettings
+from eqo.application.backup import LogicalBackupService
 from eqo.domain.memory import MemoryImportance, MemorySource
 from eqo.domain.persona import Persona
 from eqo.domain.plan import Plan
@@ -86,6 +87,7 @@ class CLI:
         ai_interpreter: NaturalLanguageInterpreter | None = None,
         interpretation_executor: InterpretationExecutor | None = None,
         voice_service: VoiceInteractionService | None = None,
+        logical_backup: LogicalBackupService | None = None,
     ) -> None:
         self.service = service
         self.state_service = state_service
@@ -98,6 +100,7 @@ class CLI:
         self.ai_interpreter = ai_interpreter
         self.interpretation_executor = interpretation_executor
         self.voice_service = voice_service
+        self.logical_backup = logical_backup
         self.confirmation_gate = ConfirmationGate()
 
     def run(self) -> None:
@@ -119,6 +122,8 @@ class CLI:
                 print("17. Interpretar linguagem natural")
             if self.voice_service is not None:
                 print("18. Push-to-talk (arquivo WAV)")
+            if self.logical_backup is not None:
+                print("19. Exportar meus dados (.eqobackup)")
             choice = input(Fore.CYAN + "Escolha: ").strip()
             actions = {
                 "1": self.add_task, "2": lambda: self.list_tasks(),
@@ -135,6 +140,7 @@ class CLI:
                 "16": self.forget_information,
                 "17": self.interpret_natural_language,
                 "18": self.push_to_talk,
+                "19": self.export_logical_backup,
             }
             if choice == "9":
                 print(Fore.MAGENTA + "Até logo!")
@@ -365,6 +371,19 @@ class CLI:
             f"TTS={metrics.tts_ms:.0f}ms, total={metrics.total_ms:.0f}ms"
         )
 
+    def export_logical_backup(self) -> None:
+        if self.logical_backup is None:
+            print(Fore.YELLOW + "Exportação indisponível.")
+            return
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        destination = Path("exports") / f"eqo_{stamp}.eqobackup"
+        try:
+            self.logical_backup.export(destination)
+        except OSError as error:
+            print(Fore.RED + f"Não foi possível exportar os dados: {error}")
+            return
+        print(Fore.GREEN + f"Dados exportados para {destination}.")
+
     @staticmethod
     def _render_plan(plan: Plan) -> None:
         print(Fore.BLUE + "\nPlano sugerido (nenhuma tarefa foi alterada):")
@@ -453,6 +472,13 @@ def build_cli(root: str | Path = ".") -> CLI:
         interpreter,
         executor,
         voice_service,
+        LogicalBackupService(
+            repository,
+            state_repository,
+            profile_repository,
+            memory_repository,
+            event_repository,
+        ),
     )
 
 

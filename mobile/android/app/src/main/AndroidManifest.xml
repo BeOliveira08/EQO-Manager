@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Solicitada em runtime somente quando a pessoa toca em Falar. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <application android:allowBackup="false" android:label="EQO" android:theme="@style/AppTheme">
+        <activity android:name=".MainActivity" android:screenOrientation="portrait" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

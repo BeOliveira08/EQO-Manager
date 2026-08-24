@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "required_device_fields": ["model", "android_version", "ram_mb", "storage_free_mb", "airplane_mode"],
+  "scenarios": [
+    {"id": "cold_start", "metric": "milliseconds", "budget": 2500},
+    {"id": "idle_memory", "metric": "megabytes", "budget": 180},
+    {"id": "database_open", "metric": "milliseconds", "budget": 250},
+    {"id": "planner_100_tasks", "metric": "milliseconds", "budget": 300},
+    {"id": "memory_search_1000", "metric": "milliseconds", "budget": 250},
+    {"id": "local_ai_optional", "metric": "milliseconds", "budget": null},
+    {"id": "push_to_talk_optional", "metric": "milliseconds", "budget": null}
+  ]
+}

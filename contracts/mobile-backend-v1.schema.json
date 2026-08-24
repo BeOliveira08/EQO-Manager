@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eqo.local/contracts/mobile-backend-v1.schema.json",
+  "title": "EQO Mobile Backend Dashboard v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "assistant_name", "state", "next_action", "pending_count", "capabilities"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "assistant_name": {"type": "string", "minLength": 1},
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capacity", "energy", "available_minutes", "focus", "stress"],
+      "properties": {
+        "capacity": {"type": "integer", "minimum": 1, "maximum": 5},
+        "energy": {"type": "integer", "minimum": 1, "maximum": 5},
+        "available_minutes": {"type": "integer", "minimum": 0},
+        "focus": {"type": "integer", "minimum": 1, "maximum": 5},
+        "stress": {"type": "integer", "minimum": 1, "maximum": 5}
+      }
+    },
+    "next_action": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "title", "reason", "allocated_minutes", "task_id"],
+          "properties": {
+            "kind": {"enum": ["task", "rest"]},
+            "title": {"type": "string", "minLength": 1},
+            "reason": {"type": "string", "minLength": 1},
+            "allocated_minutes": {"type": "integer", "minimum": 1},
+            "task_id": {"type": ["string", "null"]}
+          }
+        }
+      ]
+    },
+    "pending_count": {"type": "integer", "minimum": 0},
+    "capabilities": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+  }
+}
