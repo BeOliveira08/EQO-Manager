@@ -4,9 +4,13 @@ from pathlib import Path
 from eqo.cli.interface import CLI, _render_tasks
 from eqo.domain.task import Priority, Task, TaskStatus
 from eqo.services.context_engine import ContextEngine
+from eqo.services.dialogue_manager import DialogueManager
+from eqo.services.personality_engine import PersonalityEngine
 from eqo.services.planner import Planner
+from eqo.services.profile_service import ProfileService
 from eqo.services.state_service import StateService
 from eqo.services.task_service import TaskService
+from eqo.storage.sqlite_profile_repository import SQLiteUserProfileRepository
 from eqo.storage.sqlite_repository import SQLiteTaskRepository
 from eqo.storage.sqlite_state_repository import SQLiteUserStateRepository
 
@@ -86,3 +90,29 @@ def test_cli_updates_state_and_displays_non_mutating_plan(
     assert "Pagar conta [execute]" in output
     assert task_service.list()[0].completed is False
     assert task_service.list()[0].id == task.id
+
+
+def test_cli_onboarding_and_name_change_are_persisted(
+    tmp_path: Path, monkeypatch: object, capsys: object
+) -> None:
+    database = tmp_path / "eqo.db"
+    profiles = ProfileService(SQLiteUserProfileRepository(database))
+    cli = CLI(
+        TaskService(SQLiteTaskRepository(database)),
+        profiles=profiles,
+        dialogue=DialogueManager(profiles),
+        personality=PersonalityEngine(),
+    )
+    answers = iter(["12", "Bernardo", "Alfred", "sim", "13", "Jarvis", "9"])
+    monkeypatch.setattr("builtins.input", lambda _prompt="": next(answers))  # type: ignore[attr-defined]
+
+    cli.run()
+
+    profile = profiles.current()
+    assert profile is not None
+    assert profile.name == "Bernardo"
+    assert profile.assistant_name == "Jarvis"
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert "mordomo virtual" in output
+    assert "A partir de agora sou Jarvis" in output
+    assert "--- Jarvis ---" in output

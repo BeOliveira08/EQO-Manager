@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "eqo-manager"
-version = "0.3.0"
+version = "0.4.0"
 description = "Mordomo digital local-first para reduzir carga cognitiva."
 readme = "README.md"
 requires-python = ">=3.12"

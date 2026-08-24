@@ -5,13 +5,18 @@ from pathlib import Path
 
 from colorama import Fore, init  # type: ignore[import-untyped]
 
+from eqo.domain.persona import Persona
 from eqo.domain.plan import Plan
 from eqo.domain.state import Capacity
 from eqo.domain.task import Priority, Task, TaskStatus
 from eqo.services.context_engine import ContextEngine
+from eqo.services.dialogue_manager import ConversationState, DialogueManager
+from eqo.services.personality_engine import PersonalityEngine
 from eqo.services.planner import Planner
+from eqo.services.profile_service import ProfileService
 from eqo.services.state_service import StateService
 from eqo.services.task_service import TaskService
+from eqo.storage.sqlite_profile_repository import SQLiteUserProfileRepository
 from eqo.storage.sqlite_repository import SQLiteTaskRepository
 from eqo.storage.sqlite_state_repository import SQLiteUserStateRepository
 
@@ -45,20 +50,28 @@ class CLI:
         state_service: StateService | None = None,
         planner: Planner | None = None,
         context_engine: ContextEngine | None = None,
+        profiles: ProfileService | None = None,
+        dialogue: DialogueManager | None = None,
+        personality: PersonalityEngine | None = None,
     ) -> None:
         self.service = service
         self.state_service = state_service
         self.planner = planner
         self.context_engine = context_engine
+        self.profiles = profiles
+        self.dialogue = dialogue
+        self.personality = personality
 
     def run(self) -> None:
         while True:
-            print(Fore.BLUE + "\n--- EQO ---")
+            print(Fore.BLUE + f"\n--- {self._assistant_name()} ---")
             print("1. Adicionar tarefa\n2. Listar todas\n3. Listar concluídas")
             print("4. Listar pendentes\n5. Buscar tarefas\n6. Concluir tarefa")
             print("7. Remover tarefa\n8. Estatísticas\n9. Sair")
             if self.state_service is not None:
                 print("10. Atualizar meu estado\n11. Sugerir plano")
+            if self.dialogue is not None:
+                print("12. Onboarding\n13. Alterar nome do assistente")
             choice = input(Fore.CYAN + "Escolha: ").strip()
             actions = {
                 "1": self.add_task, "2": lambda: self.list_tasks(),
@@ -68,6 +81,8 @@ class CLI:
                 "7": lambda: self.manage_task("remover"), "8": self.show_stats,
                 "10": self.update_state,
                 "11": self.show_plan,
+                "12": self.run_onboarding,
+                "13": self.change_assistant_name,
             }
             if choice == "9":
                 print(Fore.MAGENTA + "Até logo!")
@@ -174,7 +189,42 @@ class CLI:
             print(Fore.YELLOW + "Informe seu tempo disponível antes de planejar.")
             return
         plan = self.planner.create_plan(self.service.list(), state, context)
+        if self.personality is not None:
+            response = self.personality.describe_plan(
+                plan, self._persona(), self.profiles.current() if self.profiles else None
+            )
+            print(Fore.CYAN + response.text)
         self._render_plan(plan)
+
+    def run_onboarding(self) -> None:
+        if self.dialogue is None:
+            print(Fore.YELLOW + "Onboarding indisponível.")
+            return
+        response = self.dialogue.start_onboarding()
+        print(Fore.CYAN + response.text)
+        while self.dialogue.state is not ConversationState.READY:
+            response = self.dialogue.receive(input("> "))
+            print(Fore.CYAN + response.text)
+
+    def change_assistant_name(self) -> None:
+        if self.profiles is None:
+            print(Fore.YELLOW + "Perfil indisponível.")
+            return
+        try:
+            profile = self.profiles.change_assistant_name(
+                input("Novo nome do assistente: ").strip()
+            )
+        except (LookupError, ValueError) as error:
+            print(Fore.RED + str(error))
+            return
+        print(Fore.GREEN + f"Perfeito. A partir de agora sou {profile.assistant_name}.")
+
+    def _assistant_name(self) -> str:
+        profile = self.profiles.current() if self.profiles else None
+        return profile.assistant_name if profile else "EQO"
+
+    def _persona(self) -> Persona:
+        return Persona(name=self._assistant_name())
 
     @staticmethod
     def _render_plan(plan: Plan) -> None:
@@ -197,6 +247,8 @@ def build_cli(root: str | Path = ".") -> CLI:
     base = Path(root)
     repository = SQLiteTaskRepository(base / "data" / "eqo.db")
     state_repository = SQLiteUserStateRepository(base / "data" / "eqo.db")
+    profile_repository = SQLiteUserProfileRepository(base / "data" / "eqo.db")
+    profiles = ProfileService(profile_repository)
     imported = repository.import_legacy_json(base / "tasks.json")
     if imported:
         print(Fore.GREEN + f"OK: {imported} tarefa(s) importada(s) do formato legado.")
@@ -205,6 +257,9 @@ def build_cli(root: str | Path = ".") -> CLI:
         StateService(state_repository),
         Planner(),
         ContextEngine(),
+        profiles,
+        DialogueManager(profiles),
+        PersonalityEngine(),
     )
 
 

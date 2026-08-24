@@ -1,10 +1,10 @@
 # EQO Core
 
 EQO é um mordomo digital local e adaptativo para administrar tarefas e contexto com
-menos carga cognitiva. A versão `0.3.0` evolui o TurboTaskManager existente sem
+menos carga cognitiva. A versão `0.4.0` evolui o TurboTaskManager existente sem
 depender de Internet ou IA generativa.
 
-## Estado da v0.3 — Context & Adaptive Planning
+## Estado da v0.4 — Personality & Interaction Layer
 
 - domínio de tarefas separado da interface;
 - persistência local SQLite e importação não destrutiva do `tasks.json` legado;
@@ -19,6 +19,12 @@ depender de Internet ou IA generativa.
 - planejamento recomendatório que não modifica tarefas;
 - ordenação por urgência, conflitos de tempo, redução e divisão em segmentos;
 - atualização de estado e plano sugerido disponíveis na CLI pelas opções 10 e 11.
+- persona determinística separada das decisões e do planejamento;
+- perfil persistente com nome do usuário, assistente, idioma e fuso horário;
+- onboarding por máquina de estados e troca do nome do assistente;
+- respostas auditáveis que preservam decisão e justificativa do Core;
+- intents e parser de comandos explícitos, sem interpretação livre ou LLM;
+- fronteiras opcionais para IA, STT e TTS sem implementações ou dependências pesadas.
 
 ## Executar e verificar
 
