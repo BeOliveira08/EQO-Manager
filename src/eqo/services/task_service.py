@@ -15,8 +15,17 @@ class TaskService:
         self.backup_directory = backup_directory
 
     def create(self, title: str, priority: Priority = Priority.MEDIUM,
-               deadline: date | None = None) -> Task:
-        task = Task(title=title, priority=priority, deadline=deadline)
+               deadline: date | None = None, *,
+               estimated_minutes: int | None = None,
+               effort: int = 3, flexibility: int = 3) -> Task:
+        task = Task(
+            title=title,
+            priority=priority,
+            deadline=deadline,
+            estimated_minutes=estimated_minutes,
+            effort=effort,
+            flexibility=flexibility,
+        )
         self._backup()
         self.repository.add(task)
         return task

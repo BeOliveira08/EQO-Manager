@@ -1,28 +1,10 @@
-from dataclasses import dataclass
 from datetime import date
-from enum import StrEnum
 
+from eqo.domain.decision import Decision, DecisionResult
 from eqo.domain.state import Capacity, UserState
 from eqo.domain.task import Task
 
-
-class Decision(StrEnum):
-    EXECUTE = "execute"
-    DEFER = "defer"
-    REDUCE = "reduce"
-    SPLIT = "split"
-    REORDER = "reorder"
-    CANCEL = "cancel"
-    REMIND = "remind"
-    REST = "rest"
-    ASK_USER = "ask_user"
-    CONSIDER = "consider"
-
-
-@dataclass(frozen=True, slots=True)
-class DecisionResult:
-    decision: Decision
-    reason: str
+__all__ = ["Decision", "DecisionEngine", "DecisionResult"]
 
 
 class DecisionEngine:

@@ -3,6 +3,7 @@ from typing import Protocol, runtime_checkable
 
 from eqo.domain.state import UserState
 from eqo.domain.task import Task, TaskStatus
+from eqo.domain.user import UserProfile
 
 
 class TaskRepository(Protocol):
@@ -29,3 +30,8 @@ class UserStateRepository(Protocol):
 
     def save(self, state: UserState) -> None: ...
 
+
+class UserProfileRepository(Protocol):
+    def get(self) -> UserProfile | None: ...
+
+    def save(self, profile: UserProfile) -> None: ...
