@@ -1,10 +1,9 @@
 from typing import Protocol
 
-from eqo.interaction.intent import ParsedCommand
+from eqo.ai.models import AIInterpretation, AIRequest
 
 
 class AIProvider(Protocol):
-    """Fronteira futura; nenhuma implementação é exigida pelo Core."""
+    """Um provider interpreta linguagem; nunca recebe repositórios ou executa ações."""
 
-    def interpret(self, text: str) -> ParsedCommand: ...
-
+    def interpret(self, request: AIRequest) -> AIInterpretation: ...

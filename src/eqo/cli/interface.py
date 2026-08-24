@@ -5,6 +5,12 @@ from pathlib import Path
 
 from colorama import Fore, init  # type: ignore[import-untyped]
 
+from eqo.ai.confirmation import ConfirmationGate
+from eqo.ai.context_builder import AIContextBuilder
+from eqo.ai.interpreter import NaturalLanguageInterpreter
+from eqo.ai.models import AIMode, InterpretationDisposition
+from eqo.ai.ollama_provider import OllamaAIProvider
+from eqo.ai.settings import AISettings
 from eqo.domain.memory import MemoryImportance, MemorySource
 from eqo.domain.persona import Persona
 from eqo.domain.plan import Plan
@@ -12,6 +18,7 @@ from eqo.domain.state import Capacity
 from eqo.domain.task import Priority, Task, TaskStatus
 from eqo.services.context_engine import ContextEngine
 from eqo.services.dialogue_manager import ConversationState, DialogueManager
+from eqo.services.interpretation_executor import InterpretationExecutor
 from eqo.services.memory_service import MemoryService
 from eqo.services.personality_engine import PersonalityEngine
 from eqo.services.planner import Planner
@@ -58,6 +65,8 @@ class CLI:
         dialogue: DialogueManager | None = None,
         personality: PersonalityEngine | None = None,
         memories: MemoryService | None = None,
+        ai_interpreter: NaturalLanguageInterpreter | None = None,
+        interpretation_executor: InterpretationExecutor | None = None,
     ) -> None:
         self.service = service
         self.state_service = state_service
@@ -67,6 +76,9 @@ class CLI:
         self.dialogue = dialogue
         self.personality = personality
         self.memories = memories
+        self.ai_interpreter = ai_interpreter
+        self.interpretation_executor = interpretation_executor
+        self.confirmation_gate = ConfirmationGate()
 
     def run(self) -> None:
         while True:
@@ -80,6 +92,11 @@ class CLI:
                 print("12. Onboarding\n13. Alterar nome do assistente")
             if self.memories is not None:
                 print("14. Lembrar informação\n15. O que você lembra?\n16. Esquecer informação")
+            if (
+                self.ai_interpreter is not None
+                and self.ai_interpreter.mode is AIMode.LOCAL
+            ):
+                print("17. Interpretar linguagem natural")
             choice = input(Fore.CYAN + "Escolha: ").strip()
             actions = {
                 "1": self.add_task, "2": lambda: self.list_tasks(),
@@ -94,6 +111,7 @@ class CLI:
                 "14": self.remember_information,
                 "15": self.show_memories,
                 "16": self.forget_information,
+                "17": self.interpret_natural_language,
             }
             if choice == "9":
                 print(Fore.MAGENTA + "Até logo!")
@@ -278,6 +296,27 @@ class CLI:
         else:
             print(Fore.YELLOW + "Não encontrei essa memória.")
 
+    def interpret_natural_language(self) -> None:
+        if self.ai_interpreter is None or self.interpretation_executor is None:
+            print(Fore.YELLOW + "Inteligência local indisponível.")
+            return
+        state = self.state_service.current() if self.state_service else None
+        outcome = self.ai_interpreter.interpret(input("Diga o que você precisa: "), state)
+        if outcome.disposition is InterpretationDisposition.CONFIRM:
+            entities = ", ".join(
+                f"{key}={value}" for key, value in outcome.interpretation.entities
+            )
+            prompt = (
+                f"Interpretei {outcome.interpretation.intent.value} "
+                f"({entities}). Confirmar? (s/n): "
+            )
+            confirmed = input(prompt).strip().casefold() in {"s", "sim"}
+            outcome = self.confirmation_gate.resolve(outcome, confirmed)
+        if outcome.disposition is InterpretationDisposition.UNKNOWN:
+            print(Fore.YELLOW + "Não consegui interpretar com segurança. Nenhuma ação foi feita.")
+            return
+        print(Fore.CYAN + self.interpretation_executor.execute(outcome).text)
+
     @staticmethod
     def _render_plan(plan: Plan) -> None:
         print(Fore.BLUE + "\nPlano sugerido (nenhuma tarefa foi alterada):")
@@ -303,18 +342,48 @@ def build_cli(root: str | Path = ".") -> CLI:
     memory_repository = SQLiteMemoryRepository(base / "data" / "eqo.db")
     event_repository = SQLiteEventRepository(base / "data" / "eqo.db")
     profiles = ProfileService(profile_repository)
+    tasks = TaskService(repository, base / "backups")
+    states = StateService(state_repository)
+    memories = MemoryService(memory_repository, event_repository)
+    planner = Planner()
+    context_engine = ContextEngine()
+    settings = AISettings.from_environment()
+    provider = (
+        OllamaAIProvider(
+            model=settings.ollama_model,
+            host=settings.ollama_host,
+            timeout_seconds=settings.timeout_seconds,
+        )
+        if settings.mode is AIMode.LOCAL
+        else None
+    )
+    interpreter = NaturalLanguageInterpreter(
+        mode=settings.mode,
+        provider=provider,
+        context_builder=AIContextBuilder(memories),
+    )
+    executor = InterpretationExecutor(
+        tasks=tasks,
+        states=states,
+        memories=memories,
+        profiles=profiles,
+        planner=planner,
+        context_engine=context_engine,
+    )
     imported = repository.import_legacy_json(base / "tasks.json")
     if imported:
         print(Fore.GREEN + f"OK: {imported} tarefa(s) importada(s) do formato legado.")
     return CLI(
-        TaskService(repository, base / "backups"),
-        StateService(state_repository),
-        Planner(),
-        ContextEngine(),
+        tasks,
+        states,
+        planner,
+        context_engine,
         profiles,
         DialogueManager(profiles),
         PersonalityEngine(),
-        MemoryService(memory_repository, event_repository),
+        memories,
+        interpreter,
+        executor,
     )
 
 

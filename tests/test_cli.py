@@ -1,10 +1,14 @@
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+from eqo.ai.interpreter import NaturalLanguageInterpreter
+from eqo.ai.models import AIInterpretation, AIMode, AIRequest
 from eqo.cli.interface import CLI, _render_tasks
 from eqo.domain.task import Priority, Task, TaskStatus
+from eqo.interaction.intent import Intent
 from eqo.services.context_engine import ContextEngine
 from eqo.services.dialogue_manager import DialogueManager
+from eqo.services.interpretation_executor import InterpretationExecutor
 from eqo.services.memory_service import MemoryService
 from eqo.services.personality_engine import PersonalityEngine
 from eqo.services.planner import Planner
@@ -150,3 +154,41 @@ def test_cli_remembers_lists_and_really_forgets_information(
     assert "Essa memória foi apagada" in output
     assert "Ainda não tenho memórias persistentes" in output
     assert memories.list() == []
+
+
+def test_cli_requires_confirmation_before_ai_state_mutation(
+    tmp_path: Path, monkeypatch: object, capsys: object
+) -> None:
+    class MediumConfidenceProvider:
+        def interpret(self, request: AIRequest) -> AIInterpretation:
+            return AIInterpretation(
+                Intent.UPDATE_STATE,
+                0.7,
+                (("capacity", "LOW"),),
+                provider="fake",
+                model="tiny",
+            )
+
+    database = tmp_path / "eqo.db"
+    tasks = TaskService(SQLiteTaskRepository(database))
+    states = StateService(SQLiteUserStateRepository(database))
+    memories = MemoryService(SQLiteMemoryRepository(database))
+    interpreter = NaturalLanguageInterpreter(
+        mode=AIMode.LOCAL, provider=MediumConfidenceProvider()
+    )
+    executor = InterpretationExecutor(tasks=tasks, states=states, memories=memories)
+    cli = CLI(
+        tasks,
+        state_service=states,
+        memories=memories,
+        ai_interpreter=interpreter,
+        interpretation_executor=executor,
+    )
+    answers = iter(["17", "não consigo estudar", "sim", "9"])
+    monkeypatch.setattr("builtins.input", lambda _prompt="": next(answers))  # type: ignore[attr-defined]
+
+    cli.run()
+
+    assert states.current().capacity.name == "LOW"
+    output = capsys.readouterr().out  # type: ignore[attr-defined]
+    assert "Estado atualizado" in output

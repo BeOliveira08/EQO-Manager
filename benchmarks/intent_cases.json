@@ -1,0 +1,37 @@
+[
+  {
+    "text": "me mostra minhas tarefas",
+    "expected_intent": "list_tasks",
+    "expected_entities": {}
+  },
+  {
+    "text": "o que tenho hoje?",
+    "expected_intent": "list_tasks",
+    "expected_entities": {"date": "today"}
+  },
+  {
+    "text": "não consigo estudar agora",
+    "expected_intent": "update_state",
+    "expected_entities": {"capacity": "LOW"}
+  },
+  {
+    "text": "cria uma tarefa chamada estudar python",
+    "expected_intent": "create_task",
+    "expected_entities": {"title": "estudar python"}
+  },
+  {
+    "text": "esquece que eu gosto de estudar à noite",
+    "expected_intent": "forget_memory",
+    "expected_entities": {"key": "preferred_study_time"}
+  },
+  {
+    "text": "como está meu dia?",
+    "expected_intent": "get_plan",
+    "expected_entities": {}
+  },
+  {
+    "text": "me ajuda a organizar isso",
+    "expected_intent": "get_plan",
+    "expected_entities": {}
+  }
+]

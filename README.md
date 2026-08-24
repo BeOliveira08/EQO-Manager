@@ -1,10 +1,10 @@
 # EQO Core
 
 EQO é um mordomo digital local e adaptativo para administrar tarefas e contexto com
-menos carga cognitiva. A versão `0.5.0` evolui o TurboTaskManager existente sem
+menos carga cognitiva. A versão `0.6.0` evolui o TurboTaskManager existente sem
 depender de Internet ou IA generativa.
 
-## Estado da v0.5 — Persistent Memory
+## Estado da v0.6 — Local Intelligence Adapter
 
 - domínio de tarefas separado da interface;
 - persistência local SQLite e importação não destrutiva do `tasks.json` legado;
@@ -32,6 +32,28 @@ depender de Internet ou IA generativa.
 - esquecimento físico, incluindo evidência capaz de recriar uma inferência;
 - consolidação determinística de padrões sem duplicação;
 - CLI para lembrar, listar e esquecer pelas opções 14, 15 e 16.
+- `AIRequest` e `AIInterpretation` estritamente tipados;
+- validator de intent, confidence, entidades, tipos, tamanhos e valores;
+- thresholds explícitos para aceitar, confirmar ou retornar `UNKNOWN`;
+- contexto mínimo com no máximo três memórias recuperadas por FTS5;
+- `OllamaAIProvider` opcional, isolado e sem dependência Python adicional;
+- fallback seguro para timeout, indisponibilidade e saída inválida;
+- executor que só aceita interpretações confirmadas pelo pipeline;
+- primeira suíte de frases em `benchmarks/intent_cases.json`;
+- opção 17 da CLI para linguagem natural quando o modo local estiver habilitado.
+
+## Inteligência local opcional
+
+O modo padrão permanece desligado. Para usar um Ollama já instalado e em execução:
+
+```powershell
+$env:EQO_AI_MODE = "local"
+$env:EQO_OLLAMA_MODEL = "llama3.2:3b"
+eqo
+```
+
+Também podem ser definidos `EQO_OLLAMA_HOST` e `EQO_AI_TIMEOUT`. Se o Ollama estiver
+indisponível, o EQO retorna `UNKNOWN` e mantém o Core funcional.
 
 ## Executar e verificar
 
